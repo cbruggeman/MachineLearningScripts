@@ -25,8 +25,9 @@ def smallVarCombination(covariance):
                     jac=grad,
                     x0=x0,
                     constraints=cons,
+                    bounds=bounds,
                     method='SLSQP',
-                    options={'disp': True})
+                    options={'disp': True}).x
 
 def quadraticWeightedVote(outputs):
     if type(outputs)==list:
