@@ -28,7 +28,7 @@ class weightedRegressor:
             tot=sum([1./s for s in self.scores])
             self.weights=[1./(s*tot) for s in self.scores]
         elif self.weighting=='varMin':
-            self.covariance=empirical_covariance(self.predictions)
+            self.covariance=empirical_covariance(np.array(self.predictions).T)
             self.weights=smallestVarianceWeights(self.covariance,self.MSEs)
 
 
@@ -67,5 +67,6 @@ def smallestVarianceWeights(covariance,biases,biasWeighting=0.):
                     jac=grad,
                     x0=x0,
                     constraints=cons,
+                    bounds=bounds,
                     method='SLSQP',
-                    options={'disp': True})
+                    options={'disp': True}).x
