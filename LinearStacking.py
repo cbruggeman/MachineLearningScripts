@@ -2,34 +2,45 @@ from scipy.optimize import minimize
 from __future__ import division
 from sklearn.cross_validation import cross_val_predict
 from sklearn.covariance import empirical_covariance
+from sklearn.linear_model import LinearRegression
 import numpy as np
 
 class weightedRegressor:
-    def __init__(self,regList,cv=3, weighting='uniform', biasWeighting=1.0):
+    def __init__(self,regList,
+                 cv=3,
+                 weighting='uniform',
+                 biasWeighting=1.0,
+                 stacker=LinearRegression(fit_intercept=False)):
         self.regList=regList
         self.cv=cv
         self.weighting=weighting
         self.biasWeighting=biasWeighting
+        self.stacker=stacker
 
     def fit(self,X,Y):
         self.predictions=[]
         n=len(Y)
-        self.scores=[]
+        self.MSEs=[]
         self.weights=[]
         for reg in self.regList:
             self.predictions.append(cross_val_predict(reg,X,Y,cv=self.cv))
             MSE=sum([(p-a)**2. for (p,a) in zip(self.predictions[-1],Y)])/n
-            self.MSEs.append(mse)
+            self.MSEs.append(MSE)
             reg.fit(X,Y)
 
         if self.weighting=='uniform':
             self.weights=[1./len(self.regList)]*len(self.regList)
         elif self.weighting=='score':
-            tot=sum([1./s for s in self.scores])
-            self.weights=[1./(s*tot) for s in self.scores]
+            tot=sum([1./s for s in self.MSEs])
+            self.weights=[1./(s*tot) for s in self.MSEs]
         elif self.weighting=='varMin':
             self.covariance=empirical_covariance(np.array(self.predictions).T)
-            self.weights=smallestVarianceWeights(self.covariance,self.MSEs)
+            self.weights=smallestVarianceWeights(self.covariance,self.MSEs,self.biasWeighting)
+        elif self.weighting=='linearReg':
+            self.stacker.fit(np.array(self.predictions).T,Y)
+            self.weights=self.stacker.coef_
+        
+        print self.weights
 
 
 
@@ -48,6 +59,7 @@ class weightedRegressor:
 
 
 def smallestVarianceWeights(covariance,biases,biasWeighting=0.):
+
     dimension=covariance.shape[0]
     biases=np.array(biases)
     # Define the objective function
@@ -66,7 +78,6 @@ def smallestVarianceWeights(covariance,biases,biasWeighting=0.):
     return minimize(fun=func,
                     jac=grad,
                     x0=x0,
-                    constraints=cons,
                     bounds=bounds,
-                    method='SLSQP',
-                    options={'disp': True}).x
+                    constraints=cons,
+                    method='SLSQP').x
