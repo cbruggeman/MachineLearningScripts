@@ -12,6 +12,9 @@ class sumFeature:
     def transform(self,X):
         return X.sum(axis=1)
 
+    def fit_transform(self,X):
+        return self.transform(X)
+
 
 class stdFeature:
     def __init__(self):
@@ -23,6 +26,9 @@ class stdFeature:
     def transform(self,X):
         return X.std(axis=1)
 
+    def fit_transform(self,X):
+        return self.transform(X)
+
 class directionalStdFeature:
     def __init__(self,axis,dimensions=None):
         self.axis=axis
@@ -31,26 +37,18 @@ class directionalStdFeature:
     def fit(self,X):
         # If nothing given, assume square image
         if self.dimensions==None:
-            self.dimensions=(int(X.shape[1]**0.5))*2
+            self.dimensions=[int(X.shape[1]**0.5)]*2
 
     def transform(self,X):
-        def std(x):
-            im=x.reshape(self.dimensions)
-            total=0
-            weightedTotal=0
-            num=self.dimensions[self.axis]
-            for i in range(num):
-                s=im.take(i,axis=self.axis).sum()
-                total+=s
-                weightedTotal+=i*s
-            mean=float(weightedTotal)/total
-            RSE=0
-            for i in range(num):
-                s=im.take(i,axis=self.axis).sum()
-                RSE+=(mean-i)**2.*s
-            return (RSE/total)**(0.5)
+        X=np.array(X)
+        return np.apply_along_axis(lambda x: (varByAxis(x.reshape(self.dimensions),
+                                                        axis=self.axis)**0.5),
+                                    axis=1,
+                                    arr=X)
 
-        return np.apply_along_axis(std,axis=1,arr=X)
+    def fit_transform(self,X):
+        self.fit(X)
+        return self.transform(X)
 
 
 
@@ -96,9 +94,26 @@ def imageCovarianceMatrix(im):
     covarXY=coVar(im)
     return np.array([[varX,covarXY],[covarXY,varY]])
 
-def largestEigenvector(matrix,angle=False):
+def eigenvectorAngles(matrix):
     values,vectors=np.linalg.eig(matrix)
-    x,y=vectors[np.argmax(values)]
-    if angle:
-        return math.atan(y/x)
-    else return np.array(x,y)
+    x1,y1=vectors[np.argmax(values)]
+    x2,y2=vectors[np.argmin(values)]
+    return np.array([math.atan(y1/x1),math.atan(y2/x2)])
+
+class imageEigenAxes:
+    def __init__(self,dimensions=None, eigenAngles=True, eigenRatio=True, eigenValues=True):
+        self.dimensions=dimensions
+        self.eigenAngles=eigenAngles
+        self.eigenRatio=eigenRatio
+
+    def fit(self,X):
+        # If nothing given, assume square image
+        if self.dimensions==None:
+            self.dimensions=[int(X.shape[1]**0.5)]*2
+
+    def transform(self,X):
+        X=np.array(X)
+        return np.apply_along_axis(lambda x: (eigenvectorAngles(imageCovarianceMatrix(x.reshape(self.dimensions)))),
+                            axis=1,
+                            arr=X)
+
