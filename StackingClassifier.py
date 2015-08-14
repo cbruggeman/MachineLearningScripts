@@ -31,7 +31,6 @@ class StackingClassifier:
 
             # Do the final fit for each classifier
             clf.fit(X,Y)
-
         secondLevelInput=np.hstack([secondLevelInput]+firstLevelPredictions)
 
         
@@ -45,6 +44,3 @@ class StackingClassifier:
         secondLevelInput=np.concatenate([feat.transform(X) for feat in self.metaFeatures]+
                                         [clf.predict_proba(X) for clf in self.firstLevel],axis=1)
         return self.finalClf.predict(secondLevelInput)
-
-
-
