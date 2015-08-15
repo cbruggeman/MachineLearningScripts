@@ -10,7 +10,7 @@ class sumFeature:
         pass
 
     def transform(self,X):
-        return X.sum(axis=1)
+        return np.array(X.sum(axis=1))[None].T
 
     def fit_transform(self,X):
         return self.transform(X)
@@ -24,7 +24,7 @@ class stdFeature:
         pass
 
     def transform(self,X):
-        return X.std(axis=1)
+        return np.array(X.std(axis=1))[None].T
 
     def fit_transform(self,X):
         return self.transform(X)
@@ -44,7 +44,7 @@ class directionalStdFeature:
         return np.apply_along_axis(lambda x: (varByAxis(x.reshape(self.dimensions),
                                                         axis=self.axis)**0.5),
                                     axis=1,
-                                    arr=X)
+                                    arr=X)[None].T
 
     def fit_transform(self,X):
         self.fit(X)
@@ -94,11 +94,15 @@ def imageCovarianceMatrix(im):
     covarXY=coVar(im)
     return np.array([[varX,covarXY],[covarXY,varY]])
 
-def eigenvectorAngles(matrix):
+def eigenvectorProperties(matrix):
     values,vectors=np.linalg.eig(matrix)
     x1,y1=vectors[np.argmax(values)]
     x2,y2=vectors[np.argmin(values)]
-    return np.array([math.atan(y1/x1),math.atan(y2/x2)])
+    return np.array([math.atan(y1/x1),
+                     math.atan(y2/x2),
+                     max(values),
+                     min(values),
+                     max(values)/min(values)])
 
 class imageEigenAxes:
     def __init__(self,dimensions=None, eigenAngles=True, eigenRatio=True, eigenValues=True):
@@ -106,14 +110,18 @@ class imageEigenAxes:
         self.eigenAngles=eigenAngles
         self.eigenRatio=eigenRatio
 
-    def fit(self,X):
+    def fit(self,X,Y=None):
         # If nothing given, assume square image
         if self.dimensions==None:
             self.dimensions=[int(X.shape[1]**0.5)]*2
 
-    def transform(self,X):
+    def transform(self,X,Y=None):
         X=np.array(X)
-        return np.apply_along_axis(lambda x: (eigenvectorAngles(imageCovarianceMatrix(x.reshape(self.dimensions)))),
+        return np.apply_along_axis(lambda x: (eigenvectorProperties(imageCovarianceMatrix(x.reshape(self.dimensions)))),
                             axis=1,
                             arr=X)
+    
+    def fit_transform(self,X,Y=None):
+        self.fit(X)
+        return self.transform(X)
 
