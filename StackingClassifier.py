@@ -31,14 +31,18 @@ class StackingClassifier:
 
             # Do the final fit for each classifier
             clf.fit(X,Y)
-        secondLevelInput=np.hstack([secondLevelInput]+firstLevelPredictions)
-
         
-
-
+        secondLevelInput=np.hstack([secondLevelInput]+firstLevelPredictions)
         shuffledY=Y[[b for a in folds for b in a[1]]]
 
-        self.finalClf.fit(secondLevelInput,shuffledY)
+        self.secondLevelInput=secondLevelInput
+        self.shuffledY=shuffledY
+
+        if type(finalClf)==list:
+            for clf in self.finalClf:
+                clf.fit(secondLevelInput,shuffledY)
+        else:
+            self.finalClf.fit(secondLevelInput,shuffledY)
 
     def predict(self,X):
         secondLevelInput=np.concatenate([feat.transform(X) for feat in self.metaFeatures]+
